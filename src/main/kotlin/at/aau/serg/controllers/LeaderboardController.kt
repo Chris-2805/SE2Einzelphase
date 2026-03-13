@@ -5,6 +5,9 @@ import at.aau.serg.services.GameResultService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.server.ResponseStatusException
+import org.springframework.http.HttpStatus
 
 @RestController
 @RequestMapping("/leaderboard")
@@ -13,8 +16,23 @@ class LeaderboardController(
 ) {
 
     @GetMapping
-    fun getLeaderboard(): List<GameResult> =
-        gameResultService.getGameResults()
+    fun getLeaderboard(@RequestParam(required = false) rank: Int?): List<GameResult> {
+        val sortedResults = gameResultService.getGameResults()
             .sortedWith(compareByDescending<GameResult> { it.score }.thenBy { it.timeInSeconds })
+
+        if (rank == null) {
+            return sortedResults
+        }
+
+        if (rank < 1 || rank > sortedResults.size) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid rank")
+        }
+
+        val index = rank - 1
+        val fromIndex = maxOf(0, index - 3)
+        val toIndex = minOf(sortedResults.size, index + 4)
+
+        return sortedResults.subList(fromIndex, toIndex)
+    }
 
 }
